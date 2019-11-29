@@ -24,7 +24,7 @@ namespace Metronom
 
         private void BeepNow(Metronome m, Beep b)
         {
-            Console.WriteLine("\a");
+            Console.Beep(b.Freqency, ListID*b.Duration);
         }
     }
     public class TimeOfTick : EventArgs
@@ -35,6 +35,7 @@ namespace Metronom
     public class Beep : EventArgs
     {
         public int Freqency { set; get; }
+        public int Duration { set; get; }
     }
     public class Metronome
     {
@@ -42,49 +43,55 @@ namespace Metronom
         public event BeepHandler Beep;
         public delegate void TickHandler(Metronome m, TimeOfTick e);
         public delegate void BeepHandler(Metronome m, Beep b);
-        public void Check()
+        public async Task Check()
         {
-            while (true)
+            await Task.Run( () =>
             {
+                while (true)
+                {
                     Thread.Sleep(2000);
                     TimeOfTick TOT = new TimeOfTick();
                     Beep bp = new Beep();
                     bp.Freqency = 420;
+                    bp.Duration = 200;
                     TOT.Time = DateTime.Now;
                     Tick?.Invoke(this, TOT);
                     Beep?.Invoke(this, bp);
-                
+                }
             }
+            );
         }
     }
     class Program
     {
+        
         static void Main()
         {
-            Task<Metronome> t = new Task<Metronome>(() =>
-            {
-                Metronome m = new Metronome();
-                m.Check();
-                return m;
-            });
-
-
-            Task<Metronome> q = new Task<Metronome>(() =>
-            {
-                Metronome m = new Metronome();
-                m.Check();
-                return m;
-            });
-
-            t.Start();
-            q.Start();
-
-            Task.WaitAll(new Task[] { t, q });
+            Metronome m = new Metronome();
+            Metronome t = new Metronome();
 
             Listener l = new Listener(1);
-            l.Subscribe(t.Result);
+            l.Subscribe(m);
             Listener n = new Listener(2);
-            n.Subscribe(q.Result);
+            n.Subscribe(t);
+
+            Task t1 = new Task(async () =>
+            {
+                await t.Check();
+            });
+
+            Task t2 = new Task(async () =>
+            {
+                await m.Check();
+            });
+
+            t1.Start();
+            t2.Start();
+
+            Console.WriteLine("Zpět v Main");
+            Console.ReadLine();
+
+           
         }
     }
 }
